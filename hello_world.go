@@ -28,8 +28,8 @@ func say(
 	s *Shared,
 	done *bool,
 	mu *sync.Mutex,
-	wg *sync.WaitGroup
-) {
+	wg *sync.WaitGroup)
+{
 	// TODO: เพิ่ม parameter mu *sync.Mutex, wg *sync.WaitGroup ในฟังก์ชันนี้
 	// TODO: เพิ่ม defer wg.Done() ที่นี่เพื่อบอก WaitGroup ว่าทำงานเสร็จแล้ว
 	defer wg.Done()
