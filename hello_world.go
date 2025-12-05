@@ -27,17 +27,21 @@ func say(
 	max int,
 	s *Shared,
 	done *bool,
+	mu *sync.Mutex,
+	wg *sync.WaitGroup
 ) {
 	// TODO: เพิ่ม parameter mu *sync.Mutex, wg *sync.WaitGroup ในฟังก์ชันนี้
 	// TODO: เพิ่ม defer wg.Done() ที่นี่เพื่อบอก WaitGroup ว่าทำงานเสร็จแล้ว
-
+	defer wg.Done()
 	for {
 		// ⚠️ ไม่มี mutex lock - จะเกิด race condition เมื่อหลาย goroutine เข้าถึงตัวแปรพร้อมกัน!
 		// TODO: เพิ่ม mu.Lock() ที่นี่ก่อนเข้าถึง shared state
+		mu.Lock()
 
 		// เช็คว่าทำงานเสร็จหรือยัง
 		if *done {
 			// TODO: เพิ่ม mu.Unlock() ก่อน return
+			mu.Unlock()
 			return
 		}
 
@@ -45,6 +49,7 @@ func say(
 		if s.turn != word {
 			// TODO: เพิ่ม mu.Unlock() ก่อน continue
 			time.Sleep(1 * time.Millisecond) // ⚠️ ใช้ sleep แทนการ sync ที่ถูกต้อง - ไม่ดี!
+			mu.Unlock()
 			continue
 		}
 
@@ -58,6 +63,7 @@ func say(
 		if s.count >= max {
 			*done = true
 			// TODO: เพิ่ม mu.Unlock() ก่อน return
+			mu.Unlock()
 			return
 		}
 
@@ -65,6 +71,7 @@ func say(
 		s.turn = other
 
 		// TODO: เพิ่ม mu.Unlock() ที่นี่ก่อนวนลูปใหม่
+		mu.Unlock()
 	}
 }
 
@@ -96,21 +103,21 @@ func HelloWorldSync(max int) []string {
 	var done bool
 
 	// TODO: ประกาศตัวแปร
-	// var mu sync.Mutex
-	// var wg sync.WaitGroup
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 
 	// TODO: บอก WaitGroup ว่าจะมี 2 goroutines
-	// wg.Add(2)
+	wg.Add(2)
 
 	// สร้าง goroutine 2 ตัว
 	// TODO: เพิ่ม &mu และ &wg เป็น parameter เมื่อแก้ไขฟังก์ชัน say แล้ว
-	go say("hello", "world", max, &s, &done)
-	go say("world", "hello", max, &s, &done)
+	go say("hello", "world", max, &s, &done, &mu, &wg)
+	go say("world", "hello", max, &s, &done, &mu, &wg)
 
 	// ⚠️ ใช้ sleep แทน WaitGroup - วิธีแก้ปัญหาแบบผิด!
 	// อาจจะหมดเวลาก่อน goroutine ทำงานเสร็จ หรือรอนานเกินไป
 	// TODO: ลบบรรทัดนี้และใช้ wg.Wait() แทน
-	time.Sleep(50 * time.Millisecond)
+	wg.Wait()
 
 	// คืนค่าผลลัพธ์ (อาจไม่ครบ 10 ตัวเพราะ race condition!)
 	return s.out
